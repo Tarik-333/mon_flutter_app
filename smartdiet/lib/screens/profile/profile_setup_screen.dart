@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 import '../home/home_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
+  bool _isSaving = false;
 
   String _gender = 'homme';
   int _age = 25;
@@ -43,10 +45,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
-  void _finishSetup() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
+  Future<void> _finishSetup() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      await ApiService.updateMe({
+        'age': _age,
+        'weight': _weight,
+        'height': _height,
+        'gender': _gender,
+        'goal': _goal,
+        'activity_level': _activityLevel,
+      });
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur de mise à jour: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -112,19 +142,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _nextStep,
+                  onPressed: _isSaving ? null : _nextStep,
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Text(
-                    _currentStep == 3 ? 'Terminer' : 'Suivant',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
+                          _currentStep == 3 ? 'Terminer' : 'Suivant',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ),

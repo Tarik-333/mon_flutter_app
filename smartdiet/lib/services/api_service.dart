@@ -141,4 +141,96 @@ class ApiService {
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
+
+  // -------------------------
+  // MEALS
+  // -------------------------
+  static Future<List<dynamic>> getMeals({int limit = 100}) async {
+    final url = Uri.parse('$baseUrl/api/meals?limit=$limit');
+    final res = await http.get(url, headers: _headers(auth: true));
+
+    if (res.statusCode != 200) {
+      throw Exception('getMeals failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> addMeal({
+    required int userId,
+    required String name,
+    required String mealType,
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fat,
+    double fiber = 0,
+    required String date,
+    String? time,
+    String? notes,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/meals');
+
+    final res = await http.post(
+      url,
+      headers: _headers(auth: true),
+      body: jsonEncode({
+        'user_id': userId,
+        'name': name,
+        'meal_type': mealType,
+        'calories': calories,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
+        'fiber': fiber,
+        'date': date,
+        if (time != null) 'time': time,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('addMeal failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  // -------------------------
+  // WEIGHT LOGS
+  // -------------------------
+  static Future<List<dynamic>> getWeightLogs({int limit = 30}) async {
+    final url = Uri.parse('$baseUrl/api/weight?limit=$limit');
+    final res = await http.get(url, headers: _headers(auth: true));
+
+    if (res.statusCode != 200) {
+      throw Exception('getWeightLogs failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> logWeight({
+    required int userId,
+    required double weight,
+    required String date,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/weight');
+
+    final res = await http.post(
+      url,
+      headers: _headers(auth: true),
+      body: jsonEncode({
+        'user_id': userId,
+        'weight': weight,
+        'date': date,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('logWeight failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
 }

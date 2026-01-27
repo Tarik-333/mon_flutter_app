@@ -1,0 +1,34 @@
+name,grams,category,calories
+banane,100,fruit,89
+pomme,100,fruit,52
+orange,100,fruit,47
+dattes,30,fruit,84
+avocat,100,lipides,160
+pain,100,glucides,265
+pain complet,100,glucides,247
+pâtes cuites,100,glucides,131
+riz cuit,100,glucides,130
+pomme de terre bouillie,100,glucides,87
+couscous cuit,100,glucides,112
+flocons d'avoine,40,glucides,150
+œuf,60,protéines,90
+omelette,120,protéines,180
+blanc de poulet,100,protéines,165
+viande de bœuf,100,protéines,250
+poisson,100,protéines,206
+thon en boîte,100,protéines,132
+lait,200,boisson,100
+yaourt,125,produit laitier,80
+fromage,30,produit laitier,120
+huile d'olive,10,lipides,90
+beurre,10,lipides,72
+miel,20,sucré,64
+sucre,10,sucré,39
+chocolat,20,sucré,110
+rfissa,400,plat,850
+tajine au poulet,350,plat,600
+soupe de lentilles,300,plat,250
+salade de légumes,250,plat,180
+part de pizza,150,plat,400
+burger,200,plat,520
+frites,150,plat,468

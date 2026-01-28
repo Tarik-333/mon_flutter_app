@@ -911,66 +911,80 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _showAddMealModal() {
+    final rootContext = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SafeArea(
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return SafeArea(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(28),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Ajouter un repas',
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 24),
+                  Text(
+                    'Ajouter un repas',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 30),
-                _buildAddMealOption(
-                  'Scanner un aliment',
-                  'Utilise la caméra pour identifier',
-                  Icons.camera_alt_rounded,
-                  AppTheme.primaryColor,
-                ),
-                const SizedBox(height: 16),
-                _buildAddMealOption(
-                  'Rechercher un aliment',
-                  'Cherche dans la base de données',
-                  Icons.search_rounded,
-                  AppTheme.secondaryColor,
-                ),
-                const SizedBox(height: 16),
-                _buildAddMealOption(
-                  'Entrée manuelle',
-                  'Ajoute les valeurs manuellement',
-                  Icons.edit_rounded,
-                  AppTheme.accentColor,
-                ),
-              ],
+                  const SizedBox(height: 30),
+                  _buildAddMealOption(
+                    rootContext,
+                    'Scanner un aliment',
+                    'Utilise la caméra pour identifier',
+                    Icons.camera_alt_rounded,
+                    AppTheme.primaryColor,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildAddMealOption(
+                    rootContext,
+                    'Rechercher un aliment',
+                    'Cherche dans la base de données',
+                    Icons.search_rounded,
+                    AppTheme.secondaryColor,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildAddMealOption(
+                    rootContext,
+                    'Entrée manuelle',
+                    'Ajoute les valeurs manuellement',
+                    Icons.edit_rounded,
+                    AppTheme.accentColor,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildAddMealOption(
+      BuildContext rootContext,
       String title,
       String subtitle,
       IconData icon,
@@ -983,7 +997,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _showManualMealForm();
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(rootContext).showSnackBar(
           SnackBar(
             content: Text('Fonctionnalité "$title" sélectionnée'),
             backgroundColor: color,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 import 'recipe_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,11 +15,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _fabController;
 
-  final double _caloriesConsumed = 1450;
-  final double _caloriesGoal = 2000;
-  final double _protein = 65;
-  final double _carbs = 180;
-  final double _fat = 45;
+  double _caloriesConsumed = 0;
+  double _caloriesGoal = 2000;
+  double _protein = 0;
+  double _carbs = 0;
+  double _fat = 0;
+
+  int? _userId;
+  List<dynamic> _meals = [];
+  bool _isMealsLoading = true;
+  String? _mealsError;
 
   @override
   void initState() {
@@ -27,12 +33,67 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
+    _loadInitialData();
   }
 
   @override
   void dispose() {
     _fabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      final user = await ApiService.getMe();
+      _userId = user['id'] as int?;
+    } catch (_) {
+      // On garde null pour l'instant si le profil n'est pas disponible.
+    }
+    await _fetchMeals();
+  }
+
+  Future<void> _fetchMeals() async {
+    setState(() {
+      _isMealsLoading = true;
+      _mealsError = null;
+    });
+
+    try {
+      final meals = await ApiService.getMeals();
+      if (!mounted) return;
+      setState(() {
+        _meals = meals;
+        _isMealsLoading = false;
+      });
+      _recalculateTotals();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isMealsLoading = false;
+        _mealsError = e.toString();
+      });
+    }
+  }
+
+  void _recalculateTotals() {
+    double totalCalories = 0;
+    double totalProtein = 0;
+    double totalCarbs = 0;
+    double totalFat = 0;
+
+    for (final meal in _meals) {
+      totalCalories += (meal['calories'] as num?)?.toDouble() ?? 0;
+      totalProtein += (meal['protein'] as num?)?.toDouble() ?? 0;
+      totalCarbs += (meal['carbs'] as num?)?.toDouble() ?? 0;
+      totalFat += (meal['fat'] as num?)?.toDouble() ?? 0;
+    }
+
+    setState(() {
+      _caloriesConsumed = totalCalories;
+      _protein = totalProtein;
+      _carbs = totalCarbs;
+      _fat = totalFat;
+    });
   }
 
   @override
@@ -688,16 +749,98 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMealsPage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.restaurant_menu, size: 80, color: AppTheme.primaryColor),
-          const SizedBox(height: 20),
-          Text('Page Repas', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text('À venir...', style: GoogleFonts.poppins(fontSize: 16, color: AppTheme.textSecondary)),
-        ],
-      ),
+    if (_isMealsLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_mealsError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 60, color: AppTheme.errorColor),
+              const SizedBox(height: 16),
+              Text('Impossible de charger les repas', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text(_mealsError!, style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary)),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _fetchMeals,
+                child: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_meals.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.restaurant_menu, size: 80, color: AppTheme.primaryColor),
+            const SizedBox(height: 20),
+            Text('Aucun repas ajouté', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Ajoute ton premier repas avec le bouton +', style: GoogleFonts.poppins(fontSize: 16, color: AppTheme.textSecondary)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(20),
+      itemCount: _meals.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final meal = _meals[index] as Map<String, dynamic>;
+        final name = meal['name'] ?? 'Repas';
+        final mealType = meal['meal_type'] ?? 'repas';
+        final calories = (meal['calories'] as num?)?.toDouble() ?? 0;
+        final date = meal['date'] ?? '';
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppTheme.textSecondary.withOpacity(0.1)),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.restaurant, color: AppTheme.primaryColor),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${mealType.toString().toUpperCase()} • $calories kcal',
+                      style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary),
+                    ),
+                    if (date.toString().isNotEmpty)
+                      Text(date.toString(), style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -772,53 +915,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.textSecondary.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder: (context) => SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Ajouter un repas',
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                _buildAddMealOption(
+                  'Scanner un aliment',
+                  'Utilise la caméra pour identifier',
+                  Icons.camera_alt_rounded,
+                  AppTheme.primaryColor,
+                ),
+                const SizedBox(height: 16),
+                _buildAddMealOption(
+                  'Rechercher un aliment',
+                  'Cherche dans la base de données',
+                  Icons.search_rounded,
+                  AppTheme.secondaryColor,
+                ),
+                const SizedBox(height: 16),
+                _buildAddMealOption(
+                  'Entrée manuelle',
+                  'Ajoute les valeurs manuellement',
+                  Icons.edit_rounded,
+                  AppTheme.accentColor,
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Ajouter un repas',
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 30),
-            _buildAddMealOption(
-              'Scanner un aliment',
-              'Utilise la caméra pour identifier',
-              Icons.camera_alt_rounded,
-              AppTheme.primaryColor,
-            ),
-            const SizedBox(height: 16),
-            _buildAddMealOption(
-              'Rechercher un aliment',
-              'Cherche dans la base de données',
-              Icons.search_rounded,
-              AppTheme.secondaryColor,
-            ),
-            const SizedBox(height: 16),
-            _buildAddMealOption(
-              'Entrée manuelle',
-              'Ajoute les valeurs manuellement',
-              Icons.edit_rounded,
-              AppTheme.accentColor,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -833,6 +979,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return InkWell(
       onTap: () {
         Navigator.pop(context);
+        if (title == 'Entrée manuelle') {
+          _showManualMealForm();
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fonctionnalité "$title" sélectionnée'),
@@ -891,5 +1041,143 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  Future<void> _showManualMealForm() async {
+    final rootContext = context;
+    final nameController = TextEditingController();
+    final caloriesController = TextEditingController();
+    final proteinController = TextEditingController();
+    final carbsController = TextEditingController();
+    final fatController = TextEditingController();
+    String mealType = 'déjeuner';
+
+    final formKey = GlobalKey<FormState>();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Ajouter un repas', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom du repas'),
+                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: mealType,
+                  items: const [
+                    DropdownMenuItem(value: 'petit-déjeuner', child: Text('Petit-déjeuner')),
+                    DropdownMenuItem(value: 'déjeuner', child: Text('Déjeuner')),
+                    DropdownMenuItem(value: 'dîner', child: Text('Dîner')),
+                    DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                  ],
+                  onChanged: (value) => mealType = value ?? 'déjeuner',
+                  decoration: const InputDecoration(labelText: 'Type de repas'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: caloriesController,
+                  decoration: const InputDecoration(labelText: 'Calories (kcal)'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: proteinController,
+                  decoration: const InputDecoration(labelText: 'Protéines (g)'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: carbsController,
+                  decoration: const InputDecoration(labelText: 'Glucides (g)'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: fatController,
+                  decoration: const InputDecoration(labelText: 'Lipides (g)'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (!formKey.currentState!.validate()) return;
+                      if (_userId == null) {
+                        ScaffoldMessenger.of(rootContext).showSnackBar(
+                          const SnackBar(content: Text('Profil utilisateur indisponible.')),
+                        );
+                        return;
+                      }
+
+                      final now = DateTime.now();
+                      final date = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+                      final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+                      try {
+                        await ApiService.addMeal(
+                          userId: _userId!,
+                          name: nameController.text,
+                          mealType: mealType,
+                          calories: double.parse(caloriesController.text),
+                          protein: double.parse(proteinController.text),
+                          carbs: double.parse(carbsController.text),
+                          fat: double.parse(fatController.text),
+                          date: date,
+                          time: time,
+                        );
+
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        await _fetchMeals();
+                        ScaffoldMessenger.of(rootContext).showSnackBar(
+                          const SnackBar(content: Text('Repas ajouté avec succès')),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(rootContext).showSnackBar(
+                          SnackBar(content: Text('Erreur: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Enregistrer'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    nameController.dispose();
+    caloriesController.dispose();
+    proteinController.dispose();
+    carbsController.dispose();
+    fatController.dispose();
   }
 }

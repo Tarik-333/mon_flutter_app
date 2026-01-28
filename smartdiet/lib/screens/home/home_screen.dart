@@ -920,6 +920,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         initialChildSize: 0.7,
         minChildSize: 0.5,
         maxChildSize: 0.9,
+        expand: false,
         builder: (context, scrollController) {
           return SafeArea(
             child: Container(
@@ -974,6 +975,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Icons.edit_rounded,
                     AppTheme.accentColor,
                   ),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
@@ -997,12 +999,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _showManualMealForm();
           return;
         }
-        ScaffoldMessenger.of(rootContext).showSnackBar(
-          SnackBar(
-            content: Text('Fonctionnalité "$title" sélectionnée'),
-            backgroundColor: color,
-            duration: const Duration(seconds: 1),
-          ),
+        _showSnackBar(
+          rootContext,
+          'Fonctionnalité "$title" sélectionnée',
+          backgroundColor: color,
         );
       },
       borderRadius: BorderRadius.circular(20),
@@ -1142,8 +1142,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     onPressed: () async {
                       if (!formKey.currentState!.validate()) return;
                       if (_userId == null) {
-                        ScaffoldMessenger.of(rootContext).showSnackBar(
-                          const SnackBar(content: Text('Profil utilisateur indisponible.')),
+                        _showSnackBar(
+                          rootContext,
+                          'Profil utilisateur indisponible.',
                         );
                         return;
                       }
@@ -1168,13 +1169,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         if (!mounted) return;
                         Navigator.pop(context);
                         await _fetchMeals();
-                        ScaffoldMessenger.of(rootContext).showSnackBar(
-                          const SnackBar(content: Text('Repas ajouté avec succès')),
+                        _showSnackBar(
+                          rootContext,
+                          'Repas ajouté avec succès',
                         );
                       } catch (e) {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(rootContext).showSnackBar(
-                          SnackBar(content: Text('Erreur: $e')),
+                        _showSnackBar(
+                          rootContext,
+                          'Erreur: $e',
                         );
                       }
                     },
@@ -1193,5 +1196,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     proteinController.dispose();
     carbsController.dispose();
     fatController.dispose();
+  }
+
+  void _showSnackBar(
+    BuildContext rootContext,
+    String message, {
+    Color? backgroundColor,
+  }) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(rootContext).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    });
   }
 }

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
@@ -7,11 +7,11 @@ import 'package:http/http.dart' as http;
 class ApiService {
   ApiService._();
 
-  // ✅ Pixel 5 Emulator (Android) => 10.0.2.2
+  // ✅ Pour téléphone physique => IP du PC
   // ✅ Backend FastAPI tourne sur port 8000
   static String get baseUrl {
     if (kIsWeb) return 'http://127.0.0.1:8000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    if (Platform.isAndroid) return 'http://192.168.1.18:8000'; // IP de ton PC
     return 'http://127.0.0.1:8000';
   }
 
@@ -136,10 +136,21 @@ class ApiService {
       body: jsonEncode(payload),
     );
 
-    if (res.statusCode != 200) {
-      throw Exception('updateMe failed (${res.statusCode}): ${res.body}');
-    }
     return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  // -------------------------
+  // FOOD SEARCH
+  // -------------------------
+  static Future<List<dynamic>> searchFoods(String query) async {
+    final url = Uri.parse('$baseUrl/api/foods/search?query=$query');
+    final res = await http.get(url, headers: _headers(auth: true));
+
+    if (res.statusCode != 200) {
+      throw Exception('searchFoods failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as List<dynamic>;
   }
 
   // -------------------------
@@ -229,6 +240,30 @@ class ApiService {
 
     if (res.statusCode != 200) {
       throw Exception('logWeight failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  // -------------------------
+  // AI RECOGNITION
+  // -------------------------
+  static Future<Map<String, dynamic>> recognizeFood(File imageFile) async {
+    final url = Uri.parse('$baseUrl/api/ai/recognize-food');
+    
+    final request = http.MultipartRequest('POST', url);
+    request.headers.addAll(_headers(auth: true));
+    
+    request.files.add(await http.MultipartFile.fromPath(
+      'file',
+      imageFile.path,
+    ));
+
+    final streamedRes = await request.send();
+    final res = await http.Response.fromStream(streamedRes);
+
+    if (res.statusCode != 200) {
+      throw Exception('recognizeFood failed (${res.statusCode}): ${res.body}');
     }
 
     return jsonDecode(res.body) as Map<String, dynamic>;

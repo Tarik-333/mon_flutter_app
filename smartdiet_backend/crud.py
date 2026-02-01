@@ -98,3 +98,12 @@ def get_weight_logs(db: Session, user_id: int, limit: int = 30):
     return db.query(models.WeightLog).filter(
         models.WeightLog.user_id == user_id
     ).order_by(models.WeightLog.date.desc()).limit(limit).all()
+
+def get_foods(db: Session, query: str = None, limit: int = 20):
+    """Rechercher des aliments"""
+    sql_query = db.query(models.Food)
+    if query:
+        # Recherche insensible à la casse
+        sql_query = sql_query.filter(models.Food.name.ilike(f"%{query}%"))
+    
+    return sql_query.limit(limit).all()

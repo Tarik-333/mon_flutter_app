@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart'; // ← AJOUTE CETTE LIGNE
 import 'register_screen.dart';
 import '../profile/profile_setup_screen.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -48,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
           );
 
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         }
       } catch (e) {

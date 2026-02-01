@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# ML / datasets
+*.pth
+dataset/
+*.png
+
+# Flutter / Dart
+.dart_tool/
+build/
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store

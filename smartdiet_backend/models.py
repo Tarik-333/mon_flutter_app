@@ -63,5 +63,6 @@ class Food(Base):
     carbs = Column(Float)
     fat = Column(Float)
     fiber = Column(Float)
+    grams = Column(Float)
     serving_size = Column(String(50))
     serving_unit = Column(String(20))

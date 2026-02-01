@@ -18,7 +18,7 @@ from auth import (
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from ai_recommendations import AIRecommendations
+# from ai_recommendations import AIRecommendations  # Not used - AI page is coming soon
 
 # =========================
 # Initialiser la base de données
@@ -32,92 +32,88 @@ app = FastAPI(
 )
 
 # =========================
-# IA - Modèle calories
 # =========================
-MODEL_PATH = Path("calorie_model.joblib")
-FOODS_CSV_PATH = Path("foods.csv")
+# IA - Modèle calories (Disabled - AI page coming soon)
+# =========================
+# MODEL_PATH = Path("calorie_model.joblib")
+# calorie_model = None
 
-calorie_model = None  # cache en mémoire
+# def train_and_save_model():
+#     ...
+
+# def get_calorie_model():
+#     ...
+
+# class PredictCaloriesRequest(BaseModel):
+#     name: str
+#     grams: float
+#     category: str
+
+# @app.post("/api/ai/predict-calories")
+# def predict_calories(req: PredictCaloriesRequest):
+#     ...
 
 
-def train_and_save_model():
+# =========================
+# Reconnaissance Banane (PoC)
+# =========================
+from fastapi import UploadFile, File
+from ml_service import food_service
+
+@app.post("/api/ai/recognize-banana")
+async def recognize_banana(file: UploadFile = File(...)):
     """
-    Entraîne un modèle simple à partir de foods.csv
-    et sauvegarde calorie_model.joblib
+    Reçoit une image et détecte si c'est une banane ou non.
+    Utilise le modèle fine-tuné 'banana_model_v1.pth'.
+    (Deprecated: use /api/ai/recognize-food instead)
     """
-    if not FOODS_CSV_PATH.exists():
-        raise RuntimeError("foods.csv introuvable. Ajoute foods.csv dans le dossier backend.")
-
-    df = pd.read_csv(FOODS_CSV_PATH)
-
-    # Nettoyage simple
-    df["name"] = df["name"].astype(str).str.lower().str.strip()
-    df["category"] = df["category"].astype(str).str.lower().str.strip()
-    df["grams"] = df["grams"].astype(float)
-    df["calories"] = df["calories"].astype(float)
-
-    X = df[["name", "grams", "category"]]
-    y = df["calories"]
-
-    # Modèle simple (scikit-learn)
-    from sklearn.compose import ColumnTransformer
-    from sklearn.preprocessing import OneHotEncoder
-    from sklearn.pipeline import Pipeline
-    from sklearn.linear_model import LinearRegression
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("name", OneHotEncoder(handle_unknown="ignore"), ["name"]),
-            ("category", OneHotEncoder(handle_unknown="ignore"), ["category"]),
-            ("grams", "passthrough", ["grams"]),
-        ]
-    )
-
-    model = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            ("regressor", LinearRegression()),
-        ]
-    )
-
-    model.fit(X, y)
-    joblib.dump(model, MODEL_PATH)
-    return model
+    contents = await file.read()
+    result = food_service.predict(contents)
+    # Convert to old format for backward compatibility
+    return {
+        "is_banana": result.get("is_recognized", False),
+        "confidence": result.get("confidence", 0),
+        "class_name": result.get("class_name", "unknown")
+    }
 
 
-def get_calorie_model():
-    global calorie_model
-    if calorie_model is not None:
-        return calorie_model
-
-    # Si le fichier existe → load
-    if MODEL_PATH.exists():
-        calorie_model = joblib.load(MODEL_PATH)
-        return calorie_model
-
-    # Sinon → on entraîne automatiquement et on sauvegarde
-    calorie_model = train_and_save_model()
-    return calorie_model
+@app.post("/api/ai/recognize-food")
+async def recognize_food(file: UploadFile = File(...)):
+    """
+    Reçoit une image et détecte l'aliment.
+    Retourne les informations nutritionnelles si l'aliment est reconnu.
+    """
+    contents = await file.read()
+    result = food_service.predict(contents)
+    return result
 
 
-class PredictCaloriesRequest(BaseModel):
-    name: str
-    grams: float
-    category: str
-
-
-@app.post("/api/ai/predict-calories")
-def predict_calories(req: PredictCaloriesRequest):
-    model = get_calorie_model()  # ✅ charge/entraîne automatiquement
-
-    X = pd.DataFrame([{
-        "name": req.name.lower().strip(),
-        "grams": float(req.grams),
-        "category": req.category.lower().strip()
-    }])
-
-    pred = model.predict(X)[0]
-    return {"predicted_calories": round(float(pred), 2)}
+@app.get("/api/foods/search")
+def search_foods(query: str, db: Session = Depends(get_db)):
+    """Recherche dans la base de données"""
+    if not query:
+        return []
+        
+    results = crud.get_foods(db, query)
+    
+    # Convertir en dict pour la réponse (si nécessaire, ou laisser FastAPI le faire via ORM)
+    # On retourne directement les objets ORM, FastAPI gérera la sérialisation si on avait des schemas
+    # Mais ici on retourne une liste brute, donc on va convertir manuellement pour être sûr
+    
+    res_list = []
+    for food in results:
+        res_list.append({
+            "name": food.name,
+            "grams": food.grams,
+            "category": food.category,
+            "calories": food.calories,
+            "protein": food.protein,
+            "carbs": food.carbs,
+            "fat": food.fat
+        })
+        
+    print(f"🔍 Search '{query}' -> {len(res_list)} results.")
+    return res_list
 
 
 # =========================
@@ -225,8 +221,14 @@ def update_current_user(
 
 @app.get("/api/user/goals")
 def get_user_goals(current_user: models.User = Depends(get_current_user)):
-    """Obtenir les objectifs caloriques de l'utilisateur"""
-    return AIRecommendations.get_calorie_goal(current_user)
+    """Obtenir les objectifs caloriques de l'utilisateur - Coming soon"""
+    # TODO: Implement real AI-based calorie goals
+    return {
+        "daily_calories": 2000,
+        "protein": 150,
+        "carbs": 250,
+        "fat": 65
+    }
 
 
 # =========================
@@ -298,33 +300,35 @@ def get_weight_logs(
 
 
 # =========================
-# IA & RECOMMANDATIONS
+# IA & RECOMMANDATIONS (Coming Soon)
 # =========================
-@app.get("/api/recommendations")
-def get_recommendations(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Obtenir les recommandations de repas personnalisées"""
-    return AIRecommendations.get_meal_recommendations(current_user, db)
+# These endpoints are disabled as the AI page is under development
+
+# @app.get("/api/recommendations")
+# def get_recommendations(
+#     current_user: models.User = Depends(get_current_user),
+#     db: Session = Depends(get_db)
+# ):
+#     """Obtenir les recommandations de repas personnalisées"""
+#     return AIRecommendations.get_meal_recommendations(current_user, db)
 
 
-@app.get("/api/health-tips")
-def get_health_tips(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Obtenir les conseils santé personnalisés"""
-    return AIRecommendations.get_health_tips(current_user, db)
+# @app.get("/api/health-tips")
+# def get_health_tips(
+#     current_user: models.User = Depends(get_current_user),
+#     db: Session = Depends(get_db)
+# ):
+#     """Obtenir les conseils santé personnalisés"""
+#     return AIRecommendations.get_health_tips(current_user, db)
 
 
-@app.get("/api/analysis/progress")
-def get_progress_analysis(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Analyse des progrès de l'utilisateur"""
-    return AIRecommendations.analyze_progress(current_user, db)
+# @app.get("/api/analysis/progress")
+# def get_progress_analysis(
+#     current_user: models.User = Depends(get_current_user),
+#     db: Session = Depends(get_db)
+# ):
+#     """Analyse des progrès de l'utilisateur"""
+#     return AIRecommendations.analyze_progress(current_user, db)
 
 
 # =========================
@@ -338,7 +342,14 @@ def get_stats_summary(
     """Résumé des statistiques utilisateur"""
     meals = crud.get_meals_by_user(db, current_user.id, limit=30)
     weight_logs = crud.get_weight_logs(db, current_user.id, limit=30)
-    goals = AIRecommendations.get_calorie_goal(current_user)
+    
+    # Simple default goals
+    goals = {
+        "daily_calories": 2000,
+        "protein": 150,
+        "carbs": 250,
+        "fat": 65
+    }
 
     return {
         "total_meals": len(meals),

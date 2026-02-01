@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'recipe_detail_screen.dart';
+import 'add_meal_form.dart';
+import 'search_food_screen.dart';
+import '../scan_food_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -425,9 +428,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Repas du jour', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            TextButton(
-              onPressed: () => setState(() => _currentIndex = 1),
-              child: Text('Voir tout', style: GoogleFonts.poppins(color: AppTheme.primaryColor, fontWeight: FontWeight.w600, fontSize: 15)),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryColor),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ScanFoodScreen()),
+                    );
+                  },
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _currentIndex = 1),
+                  child: Text('Voir tout', style: GoogleFonts.poppins(color: AppTheme.primaryColor, fontWeight: FontWeight.w600, fontSize: 15)),
+                ),
+              ],
             ),
           ],
         ),
@@ -524,226 +540,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildAIAssistantPage() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Assistant IA', style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-          const SizedBox(height: 8),
-          Text('Votre coach nutrition personnalisé', style: GoogleFonts.poppins(fontSize: 16, color: AppTheme.textSecondary)),
-          const SizedBox(height: 30),
-          _buildAIAvatar(),
-          const SizedBox(height: 30),
-          _buildHealthGlobalCard(),
-          const SizedBox(height: 20),
-          _buildNextStepCard(),
-          const SizedBox(height: 30),
-          _buildAIRecommendations(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAIAvatar() {
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        gradient: AppTheme.aiGradient,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: AppTheme.aiColor.withOpacity(0.4), blurRadius: 30, offset: const Offset(0, 15))],
-      ),
-      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-            child: const Icon(Icons.psychology_rounded, size: 60, color: Colors.white),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: AppTheme.aiGradient,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.psychology_rounded,
+              size: 80,
+              color: Colors.white,
+            ),
           ),
-          const SizedBox(height: 20),
-          Text('Bonjour Jean !', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 30),
           Text(
-            'J\'ai analysé vos habitudes alimentaires',
-            style: GoogleFonts.poppins(fontSize: 15, color: Colors.white.withOpacity(0.95), height: 1.4),
-            textAlign: TextAlign.center,
+            'Assistant IA',
+            style: GoogleFonts.poppins(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHealthGlobalCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 8))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.successColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.favorite_rounded, color: AppTheme.successColor, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Text('Santé Globale', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildHealthItem('Focus sur les micronutriments.', Icons.spa_rounded, AppTheme.primaryColor),
-          const SizedBox(height: 14),
-          _buildHealthItem('Boire 500ml d\'eau maintenant.', Icons.water_drop_rounded, AppTheme.secondaryColor),
-          const SizedBox(height: 14),
-          _buildHealthItem('Ajoutez plus de légumes verts.', Icons.eco_rounded, AppTheme.successColor),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHealthItem(String text, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(text, style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNextStepCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: AppTheme.sunsetGradient,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: AppTheme.accentColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Text('Prochaine Étape', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text('Préparez un smoothie protéiné', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Vous avez besoin de 15g de protéines supplémentaires pour atteindre votre objectif aujourd\'hui.',
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.95), height: 1.5),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RecipeDetailScreen(
-                    recipe: {
-                      'title': 'Smoothie Protéiné',
-                      'calories': 320,
-                      'protein': 30, // 15g base + 15g extra
-                    },
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppTheme.accentColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            'À venir...',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              color: AppTheme.textSecondary,
             ),
-            child: Text('Voir la recette', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Nous travaillons sur des fonctionnalités intelligentes pour vous aider à atteindre vos objectifs',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAIRecommendations() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Recommandations de repas', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-        const SizedBox(height: 18),
-        _buildRecommendationCard('Salade de quinoa aux légumes', '450 kcal • 20g protéines', Icons.restaurant_rounded, AppTheme.successColor),
-        const SizedBox(height: 14),
-        _buildRecommendationCard('Poulet grillé avec riz brun', '580 kcal • 45g protéines', Icons.dinner_dining_rounded, AppTheme.primaryColor),
-        const SizedBox(height: 14),
-        _buildRecommendationCard('Smoothie bowl aux fruits', '320 kcal • 12g protéines', Icons.set_meal_rounded, AppTheme.warningColor),
-      ],
-    );
-  }
-
-  Widget _buildRecommendationCard(String title, String details, IconData icon, Color color) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RecipeDetailScreen(
-              recipe: {
-                'title': title,
-                'calories': int.tryParse(details.split(' ')[0]) ?? 0,
-                'protein': int.tryParse(details.split('•')[1].trim().split('g')[0]) ?? 0,
-              },
-            ),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2), width: 2),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 5))],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]), borderRadius: BorderRadius.circular(16)),
-              child: Icon(icon, color: Colors.white, size: 26),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                  const SizedBox(height: 4),
-                  Text(details, style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.textSecondary, size: 18),
-          ],
-        ),
       ),
     );
   }
@@ -922,8 +765,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
             Container(
               width: 40,
               height: 4,
@@ -964,6 +808,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -974,12 +819,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       Color color,
       ) {
     return InkWell(
-      onTap: () {
+      onTap: () async {
         Navigator.pop(context);
         if (title == 'Entrée manuelle') {
           _showManualMealForm();
           return;
         }
+        if (title == 'Rechercher un aliment') {
+          // Ouvrir l'écran de recherche
+          // On attend un résultat pour ouvrir le formulaire
+          // Note: On ne peut pas facilement ouvrir le formulaire depuis ici car le bottom sheet est fermé.
+          // On va réouvrir le formulaire manuellement.
+          
+          await Future.delayed(const Duration(milliseconds: 100)); // Petit délai pour laisser le bottom sheet fermer
+          
+          if (!mounted) return;
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SearchFoodScreen()),
+          );
+          
+          if (result != null && result is Map<String, dynamic>) {
+            _showManualMealForm(initialValues: result);
+          }
+          return;
+        }
+        
+        // Scanner un aliment
+        if (title == 'Scanner un aliment') {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (!mounted) return;
+          final result = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(builder: (context) => const ScanFoodScreen()),
+          );
+          
+          // If meal was added via scan, refresh the meals list
+          if (result == true) {
+            await _fetchMeals();
+          }
+          return;
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fonctionnalité "$title" sélectionnée'),
@@ -1040,140 +921,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _showManualMealForm() async {
-    final nameController = TextEditingController();
-    final caloriesController = TextEditingController();
-    final proteinController = TextEditingController();
-    final carbsController = TextEditingController();
-    final fatController = TextEditingController();
-    String mealType = 'déjeuner';
-
-    final formKey = GlobalKey<FormState>();
-
-    await showModalBottomSheet(
+  Future<void> _showManualMealForm({Map<String, dynamic>? initialValues}) async {
+    final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Ajouter un repas', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nom du repas'),
-                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: mealType,
-                  items: const [
-                    DropdownMenuItem(value: 'petit-déjeuner', child: Text('Petit-déjeuner')),
-                    DropdownMenuItem(value: 'déjeuner', child: Text('Déjeuner')),
-                    DropdownMenuItem(value: 'dîner', child: Text('Dîner')),
-                    DropdownMenuItem(value: 'snack', child: Text('Snack')),
-                  ],
-                  onChanged: (value) => mealType = value ?? 'déjeuner',
-                  decoration: const InputDecoration(labelText: 'Type de repas'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: caloriesController,
-                  decoration: const InputDecoration(labelText: 'Calories (kcal)'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: proteinController,
-                  decoration: const InputDecoration(labelText: 'Protéines (g)'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: carbsController,
-                  decoration: const InputDecoration(labelText: 'Glucides (g)'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: fatController,
-                  decoration: const InputDecoration(labelText: 'Lipides (g)'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => (value == null || value.isEmpty) ? 'Champ requis' : null,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (!formKey.currentState!.validate()) return;
-                      if (_userId == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Profil utilisateur indisponible.')),
-                        );
-                        return;
-                      }
-
-                      final now = DateTime.now();
-                      final date = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-                      final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-                      try {
-                        await ApiService.addMeal(
-                          userId: _userId!,
-                          name: nameController.text,
-                          mealType: mealType,
-                          calories: double.parse(caloriesController.text),
-                          protein: double.parse(proteinController.text),
-                          carbs: double.parse(carbsController.text),
-                          fat: double.parse(fatController.text),
-                          date: date,
-                          time: time,
-                        );
-
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                        await _fetchMeals();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Repas ajouté avec succès')),
-                        );
-                      } catch (e) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erreur: $e')),
-                        );
-                      }
-                    },
-                    child: const Text('Enregistrer'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return AddMealForm(
+          userId: _userId,
+          initialValues: initialValues,
+          onMealAdded: () {
+            // Optionnel : si on veut réagir immédiatement, mais on attend le résultat du pop
+          },
         );
       },
     );
 
-    nameController.dispose();
-    caloriesController.dispose();
-    proteinController.dispose();
-    carbsController.dispose();
-    fatController.dispose();
+    if (result == true) {
+      await _fetchMeals();
+    }
   }
 }

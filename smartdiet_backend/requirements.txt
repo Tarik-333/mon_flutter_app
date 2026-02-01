@@ -11,3 +11,7 @@ python-dotenv==1.0.0
 scikit-learn
 joblib
 pandas
+torch
+torchvision
+pillow
+matplotlib

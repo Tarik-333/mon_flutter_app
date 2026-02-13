@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../theme/app_theme.dart';
-import '../../services/api_service.dart'; // ← AJOUTE CETTE LIGNE
+import '../../services/api_service.dart';
 import 'register_screen.dart';
 import '../profile/profile_setup_screen.dart';
 import '../home/home_screen.dart';
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   @override
   void dispose() {
@@ -63,6 +65,37 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         }
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
+      if (googleUser != null) {
+        // Here you would typically send the token to your backend
+        // final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        // await ApiService.loginWithGoogle(googleAuth.accessToken);
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connexion Google réussie via le client (Note: Backend à intégrer)')),
+        );
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur Google Sign-In: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
       }
     }
   }
@@ -259,15 +292,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFE5E7EB)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    icon: Image.network(
-                      'https://www.google.com/favicon.ico',
+                    icon: _isGoogleLoading 
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Image.network(
+                      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
                       width: 24,
                       height: 24,
                     ),

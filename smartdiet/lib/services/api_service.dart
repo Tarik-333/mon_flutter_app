@@ -11,7 +11,12 @@ class ApiService {
   // ✅ Backend FastAPI tourne sur port 8000
   static String get baseUrl {
     if (kIsWeb) return 'http://127.0.0.1:8000';
-    if (Platform.isAndroid) return 'http://192.168.1.18:8000'; // IP de ton PC
+    if (Platform.isAndroid) {
+      // Pour l'émulateur Android, l'adresse de l'hôte est 10.0.2.2
+      // Pour un téléphone physique, utilise l'IP de ton PC (ex: 192.168.100.39)
+      // return 'http://10.0.2.2:8000'; 
+      return 'http://192.168.100.39:8000'; 
+    }
     return 'http://127.0.0.1:8000';
   }
 
@@ -45,7 +50,7 @@ class ApiService {
         'email': email.trim(),
         'password': password,
       }),
-    );
+    ).timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       throw Exception('Login failed (${res.statusCode}): ${res.body}');
@@ -90,7 +95,7 @@ class ApiService {
         'goal': goal,
         'activity_level': activityLevel,
       }),
-    );
+    ).timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       throw Exception('Register failed (${res.statusCode}): ${res.body}');
@@ -110,7 +115,7 @@ class ApiService {
   // -------------------------
   static Future<Map<String, dynamic>> getMe() async {
     final url = Uri.parse('$baseUrl/api/user/me');
-    final res = await http.get(url, headers: _headers(auth: true));
+    final res = await http.get(url, headers: _headers(auth: true)).timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       throw Exception('getMe failed (${res.statusCode}): ${res.body}');
@@ -158,7 +163,7 @@ class ApiService {
   // -------------------------
   static Future<List<dynamic>> getMeals({int limit = 100}) async {
     final url = Uri.parse('$baseUrl/api/meals?limit=$limit');
-    final res = await http.get(url, headers: _headers(auth: true));
+    final res = await http.get(url, headers: _headers(auth: true)).timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       throw Exception('getMeals failed (${res.statusCode}): ${res.body}');

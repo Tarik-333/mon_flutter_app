@@ -11,8 +11,11 @@ class AddMealForm extends StatefulWidget {
     super.key,
     required this.userId,
     required this.onMealAdded,
-    this.initialValues, // ✅
+    this.initialValues,
+    this.initialMealType, // New parameter
   });
+
+  final String? initialMealType;
 
   @override
   State<AddMealForm> createState() => _AddMealFormState();
@@ -37,6 +40,9 @@ class _AddMealFormState extends State<AddMealForm> {
       _proteinController.text = (widget.initialValues!['protein'] ?? '').toString();
       _carbsController.text = (widget.initialValues!['carbs'] ?? '').toString();
       _fatController.text = (widget.initialValues!['fat'] ?? '').toString();
+    }
+    if (widget.initialMealType != null) {
+      _mealType = widget.initialMealType!;
     }
   }
 

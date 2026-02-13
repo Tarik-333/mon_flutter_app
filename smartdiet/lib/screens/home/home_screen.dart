@@ -25,9 +25,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   double _fat = 0;
 
   int? _userId;
-  List<dynamic> _meals = [];
-  bool _isMealsLoading = true;
-  String? _mealsError;
+  String _userName = 'Utilisateur'; // Default name
+  List<dynamic> _historyMeals = [];
+  List<dynamic> _todayMeals = [];
+  bool _isHistoryLoading = true;
+  String? _historyError;
 
   @override
   void initState() {
@@ -46,58 +48,89 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadInitialData() async {
+    // 1. Get User Info
     try {
       final user = await ApiService.getMe();
-      _userId = user['id'] as int?;
+      if (!mounted) return;
+      setState(() {
+        _userId = user['id'] as int?;
+        _userName = user['name'] as String? ?? 'Utilisateur';
+      });
+      
+      // Check for new account notification (created_at is today)
+      _checkNewAccountNotification(user['created_at']);
+      
     } catch (_) {
-      // On garde null pour l'instant si le profil n'est pas disponible.
+      // Keep default if failed
     }
-    await _fetchMeals();
+
+    // 2. Fetch Today's Meals for Dashboard
+    await _fetchTodayMeals();
+
+    // 3. Fetch History for "Repas" tab
+    _fetchHistoryMeals();
   }
 
-  Future<void> _fetchMeals() async {
+  void _checkNewAccountNotification(String? createdAtStr) {
+    if (createdAtStr == null) return;
+    try {
+      final createdAt = DateTime.parse(createdAtStr);
+      final now = DateTime.now();
+      // If created within the last 24 hours
+      if (now.difference(createdAt).inHours < 24) {
+         // Could show a specific welcome dialog or just ensure the bell has the dot (which is static currently)
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _fetchTodayMeals() async {
+    final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    
+    try {
+      final data = await ApiService.getMealsByDate(dateStr);
+      if (!mounted) return;
+      
+      final meals = data['meals'] as List<dynamic>;
+      final stats = data['stats'] as Map<String, dynamic>;
+
+      setState(() {
+        _todayMeals = meals;
+        // Update totals from backend stats directly if available, or calculate
+        _caloriesConsumed = (stats['total_calories'] as num?)?.toDouble() ?? 0;
+        _protein = (stats['total_protein'] as num?)?.toDouble() ?? 0;
+        _carbs = (stats['total_carbs'] as num?)?.toDouble() ?? 0;
+        _fat = (stats['total_fat'] as num?)?.toDouble() ?? 0;
+      });
+    } catch (e) {
+      print('Error fetching today meals: $e');
+    }
+  }
+
+  Future<void> _fetchHistoryMeals() async {
     setState(() {
-      _isMealsLoading = true;
-      _mealsError = null;
+      _isHistoryLoading = true;
+      _historyError = null;
     });
 
     try {
       final meals = await ApiService.getMeals();
       if (!mounted) return;
       setState(() {
-        _meals = meals;
-        _isMealsLoading = false;
+        _historyMeals = meals;
+        _isHistoryLoading = false;
       });
-      _recalculateTotals();
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _isMealsLoading = false;
-        _mealsError = e.toString();
+        _isHistoryLoading = false;
+        _historyError = e.toString();
       });
     }
   }
 
-  void _recalculateTotals() {
-    double totalCalories = 0;
-    double totalProtein = 0;
-    double totalCarbs = 0;
-    double totalFat = 0;
-
-    for (final meal in _meals) {
-      totalCalories += (meal['calories'] as num?)?.toDouble() ?? 0;
-      totalProtein += (meal['protein'] as num?)?.toDouble() ?? 0;
-      totalCarbs += (meal['carbs'] as num?)?.toDouble() ?? 0;
-      totalFat += (meal['fat'] as num?)?.toDouble() ?? 0;
-    }
-
-    setState(() {
-      _caloriesConsumed = totalCalories;
-      _protein = totalProtein;
-      _carbs = totalCarbs;
-      _fat = totalFat;
-    });
-  }
+  // No longer needed as we use backend stats for today
+  void _recalculateTotals() {}
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 4),
             Text(
-              'Jean Dupont',
+              _userName,
               style: GoogleFonts.poppins(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -448,16 +481,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
         const SizedBox(height: 18),
-        _buildMealCard('Petit déjeuner', '420 kcal', Icons.wb_sunny_rounded, const Color(0xFFFFA726), true),
+        const SizedBox(height: 18),
+        _buildDynamicMealCard('Petit déjeuner', Icons.wb_sunny_rounded, const Color(0xFFFFA726)),
         const SizedBox(height: 14),
-        _buildMealCard('Déjeuner', '650 kcal', Icons.wb_twilight_rounded, AppTheme.accentColor, true),
+        _buildDynamicMealCard('Déjeuner', Icons.wb_twilight_rounded, AppTheme.accentColor),
         const SizedBox(height: 14),
-        _buildMealCard('Dîner', 'Non ajouté', Icons.nightlight_round, AppTheme.primaryColor, false),
+        _buildDynamicMealCard('Dîner', Icons.nightlight_round, AppTheme.primaryColor),
+        const SizedBox(height: 14),
+        _buildDynamicMealCard('Snack', Icons.cookie_rounded, AppTheme.secondaryColor),
       ],
     );
   }
 
-  Widget _buildMealCard(String title, String calories, IconData icon, Color color, bool hasFood) {
+  Widget _buildDynamicMealCard(String mealType, IconData icon, Color color) {
+    // Find meal in _todayMeals
+    // Note: This logic assumes only ONE meal per type for simplicity in this card view, 
+    // or we just show the first one found. The user requirement implies slots.
+    final meal = _todayMeals.firstWhere(
+      (m) => (m['meal_type'] as String? ?? '').toLowerCase() == mealType.toLowerCase(),
+      orElse: () => <String, dynamic>{}, // Return empty map if not found
+    );
+
+    final bool hasFood = meal.isNotEmpty;
+    // Capitalize first letter
+    final String title = mealType.substring(0, 1).toUpperCase() + mealType.substring(1);
+    final String calories = hasFood ? '${(meal['calories'] as num).toInt()} kcal' : 'Non ajouté';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -486,8 +535,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           InkWell(
             onTap: () {
-              // Si déjà ajouté, peut-être éditer ? Pour l'instant on ouvre toujours le modal
-              _showAddMealModal();
+               // Open modal with pre-selected type
+               // We need to update _showAddMealModal signature first or handle it here
+               // For now, let's just assume we'll update it later
+              _showAddMealModal(initialType: mealType.toLowerCase());
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -592,13 +643,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMealsPage() {
-    if (_isMealsLoading) {
+    if (_isHistoryLoading) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    if (_mealsError != null) {
+    if (_historyError != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -609,10 +660,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const SizedBox(height: 16),
               Text('Impossible de charger les repas', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Text(_mealsError!, style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary)),
+              Text(_historyError!, style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary)),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _fetchMeals,
+                onPressed: _fetchHistoryMeals,
                 child: const Text('Réessayer'),
               ),
             ],
@@ -621,70 +672,132 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
     }
 
-    if (_meals.isEmpty) {
+    if (_historyMeals.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.restaurant_menu, size: 80, color: AppTheme.primaryColor),
             const SizedBox(height: 20),
-            Text('Aucun repas ajouté', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('Ajoute ton premier repas avec le bouton +', style: GoogleFonts.poppins(fontSize: 16, color: AppTheme.textSecondary)),
+            Text('Aucun historique', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold)),
           ],
         ),
       );
     }
 
-    return ListView.separated(
+    // Group meals by date
+    final Map<String, List<dynamic>> groupedMeals = {};
+    for (var meal in _historyMeals) {
+      final date = meal['date'] as String? ?? 'Inconnu';
+      if (!groupedMeals.containsKey(date)) {
+        groupedMeals[date] = [];
+      }
+      groupedMeals[date]!.add(meal);
+    }
+
+    final dates = groupedMeals.keys.toList();
+    // Sort dates descending if needed, but backend already sorts by created_at desc. 
+    // Assuming 'date' string matches sort order or relies on backend order.
+    
+    return ListView.builder(
       padding: const EdgeInsets.all(20),
-      itemCount: _meals.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: dates.length,
       itemBuilder: (context, index) {
-        final meal = _meals[index] as Map<String, dynamic>;
-        final name = meal['name'] ?? 'Repas';
-        final mealType = meal['meal_type'] ?? 'repas';
-        final calories = (meal['calories'] as num?)?.toDouble() ?? 0;
-        final date = meal['date'] ?? '';
-        return Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppTheme.textSecondary.withOpacity(0.1)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.restaurant, color: AppTheme.primaryColor),
+        final date = dates[index];
+        final mealsForDate = groupedMeals[date]!;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date Header
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                   Container(
+                     width: 4, 
+                     height: 24, 
+                     decoration: BoxDecoration(color: AppTheme.primaryColor, borderRadius: BorderRadius.circular(4)),
+                   ),
+                   const SizedBox(width: 8),
+                   Text(
+                     _formatDate(date),
+                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                   ),
+                   const Expanded(child: Divider(indent: 12, height: 1)),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            
+            // Meals List
+            ...mealsForDate.map((meal) {
+              final name = meal['name'] ?? 'Repas';
+              final mealType = meal['meal_type'] ?? 'repas';
+              final calories = (meal['calories'] as num?)?.toDouble() ?? 0;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppTheme.textSecondary.withOpacity(0.1)),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))],
+                ),
+                child: Row(
                   children: [
-                    Text(name, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${mealType.toString().toUpperCase()} • $calories kcal',
-                      style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.restaurant, color: AppTheme.primaryColor),
                     ),
-                    if (date.toString().isNotEmpty)
-                      Text(date.toString(), style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${mealType.toString().toUpperCase()} • $calories kcal',
+                            style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
+              );
+            }).toList(),
+            
+            const SizedBox(height: 12),
+          ],
         );
       },
     );
+  }
+
+  String _formatDate(String dateStr) {
+    if (dateStr == 'Inconnu') return dateStr;
+    try {
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      
+      final yesterdayDate = now.subtract(const Duration(days: 1));
+      final yesterday = '${yesterdayDate.year}-${yesterdayDate.month.toString().padLeft(2, '0')}-${yesterdayDate.day.toString().padLeft(2, '0')}';
+
+      if (dateStr == today) return "Aujourd'hui";
+      if (dateStr == yesterday) return "Hier";
+      
+      return dateStr;
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   }
 
   Widget _buildProfilePage() {
@@ -753,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showAddMealModal() {
+  void _showAddMealModal({String? initialType}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -804,6 +917,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'Ajoute les valeurs manuellement',
               Icons.edit_rounded,
               AppTheme.accentColor,
+              initialType: initialType,
             ),
           ],
         ),
@@ -816,13 +930,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       String title,
       String subtitle,
       IconData icon,
-      Color color,
-      ) {
+      IconData icon,
+      Color color, {
+      String? initialType,
+      }) {
     return InkWell(
       onTap: () async {
         Navigator.pop(context);
         if (title == 'Entrée manuelle') {
-          _showManualMealForm();
+          _showManualMealForm(initialMealType: initialType);
           return;
         }
         if (title == 'Rechercher un aliment') {
@@ -921,7 +1037,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _showManualMealForm({Map<String, dynamic>? initialValues}) async {
+  Future<void> _showManualMealForm({Map<String, dynamic>? initialValues, String? initialMealType}) async {
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -932,6 +1048,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return AddMealForm(
           userId: _userId,
           initialValues: initialValues,
+          initialMealType: initialMealType,
           onMealAdded: () {
             // Optionnel : si on veut réagir immédiatement, mais on attend le résultat du pop
           },

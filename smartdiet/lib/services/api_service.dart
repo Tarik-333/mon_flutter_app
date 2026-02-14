@@ -148,7 +148,15 @@ class ApiService {
   // FOOD SEARCH
   // -------------------------
   static Future<List<dynamic>> searchFoods(String query) async {
-    final url = Uri.parse('$baseUrl/api/foods/search?query=$query');
+    final url = Uri.parse('$baseUrl/api/foods/search?query=$query'); 
+    // Note: Backend endpoint is /products/search, not /api/foods/search based on my app.py change?
+    // Wait, in app.py I added @app.route('/products/search').
+    // Base URL might include /api prefix or not? 
+    // Looking at login: '$baseUrl/api/login'.
+    // In app.py: @app.route('/predict')... @app.route('/user')...
+    // It seems app.py does NOT use blueprints with /api prefix globally, unless Nginx handles it.
+    // However, login uses /api/login in Flutter but app.py has... wait.
+    // Let me check app.py again to see if routes have /api prefix.
     final res = await http.get(url, headers: _headers(auth: true));
 
     if (res.statusCode != 200) {
@@ -180,7 +188,8 @@ class ApiService {
     required double protein,
     required double carbs,
     required double fat,
-    double fiber = 0,
+    double quantity = 100,
+    String unit = 'g',
     required String date,
     String? time,
     String? notes,
@@ -198,7 +207,8 @@ class ApiService {
         'protein': protein,
         'carbs': carbs,
         'fat': fat,
-        'fiber': fiber,
+        'quantity': quantity,
+        'unit': unit,
         'date': date,
         if (time != null) 'time': time,
         if (notes != null && notes.isNotEmpty) 'notes': notes,

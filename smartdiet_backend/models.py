@@ -34,6 +34,8 @@ class Meal(Base):
     carbs = Column(Float)
     fat = Column(Float)
     fiber = Column(Float, default=0)
+    quantity = Column(Float, default=100) # New field
+    unit = Column(String(20), default='g') # New field
     date = Column(String(20))
     time = Column(String(10))
     notes = Column(Text)

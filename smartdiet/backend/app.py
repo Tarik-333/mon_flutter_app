@@ -90,14 +90,52 @@ def meals():
     
     elif request.method == 'POST':
         data = request.json
-        # Dans un vrai cas, on chercherait le product_id d'abord ou on l'insèrerait
-        # Ici on simplifie
+        # On insère les données détaillées du repas
+        # Si product_id est fourni, on le garde pour référence, sinon null
+        product_id = data.get('product_id') 
+        
         cur.execute("""
-            INSERT INTO meals (user_id, meal_type, product_id) 
-            VALUES (1, %s, %s)
-        """, (data.get('meal_type', 'snack'), data.get('product_id', 1)))
+            INSERT INTO meals (user_id, product_id, meal_type, date, time, name, calories, protein, carbs, fat, quantity, unit) 
+            VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            product_id,
+            data.get('meal_type', 'snack'),
+            data.get('date'), # Format YYYY-MM-DD attendu
+            data.get('time'), # Format HH:MM attendu
+            data.get('name', 'Repas inconnu'),
+            data.get('calories', 0),
+            data.get('protein', 0),
+            data.get('carbs', 0),
+            data.get('fat', 0),
+            data.get('quantity', 100),
+            data.get('unit', 'g')
+        ))
         conn.commit()
         return jsonify({"message": "Repas ajouté"})
+
+@app.route('/products/search', methods=['GET'])
+def search_products():
+    query = request.args.get('q', '')
+    if not query:
+        return jsonify([])
+        
+    conn = db.get_db_connection()
+    if not conn:
+        return jsonify({"error": "DB connection failed"}), 500
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+    
+    # Recherche simple insensible à la casse
+    search_pattern = f"%{query}%"
+    cur.execute("""
+        SELECT * FROM products 
+        WHERE name ILIKE %s 
+        LIMIT 20
+    """, (search_pattern,))
+    
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

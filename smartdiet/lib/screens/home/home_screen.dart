@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import 'recipe_detail_screen.dart';
 import 'add_meal_form.dart';
 import 'search_food_screen.dart';
+import 'meal_detail_screen.dart'; // Import added
 import '../scan_food_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -494,54 +495,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildDynamicMealCard(String mealType, IconData icon, Color color) {
-    // Find meal in _todayMeals
-    // Note: This logic assumes only ONE meal per type for simplicity in this card view, 
-    // or we just show the first one found. The user requirement implies slots.
-    final meal = _todayMeals.firstWhere(
+    // Filter meals for this type
+    final mealItems = _todayMeals.where(
       (m) => (m['meal_type'] as String? ?? '').toLowerCase() == mealType.toLowerCase(),
-      orElse: () => <String, dynamic>{}, // Return empty map if not found
-    );
+    ).toList();
 
-    final bool hasFood = meal.isNotEmpty;
+    final bool hasFood = mealItems.isNotEmpty;
+    // Calculate total calories for this meal type
+    double totalCalories = 0;
+    for (var m in mealItems) {
+      totalCalories += (m['calories'] as num?)?.toDouble() ?? 0;
+    }
+
     // Capitalize first letter
     final String title = mealType.substring(0, 1).toUpperCase() + mealType.substring(1);
-    final String calories = hasFood ? '${(meal['calories'] as num).toInt()} kcal' : 'Non ajouté';
+    final String caloriesText = hasFood ? '${totalCalories.toInt()} kcal' : 'Non ajouté';
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hasFood ? color.withOpacity(0.2) : AppTheme.textSecondary.withOpacity(0.1), width: 2),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 5))],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]), borderRadius: BorderRadius.circular(16)),
-            child: Icon(icon, color: Colors.white, size: 26),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                const SizedBox(height: 4),
-                Text(calories, style: GoogleFonts.poppins(fontSize: 14, color: hasFood ? color : AppTheme.textSecondary, fontWeight: FontWeight.w500)),
-              ],
+    return GestureDetector(
+      onTap: () async {
+         // Navigate to Meal Detail Screen
+         // We need the date string, which is today's date
+         final now = DateTime.now();
+         final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+         
+         await Navigator.push(
+           context,
+           MaterialPageRoute(
+             builder: (context) => MealDetailScreen(
+               mealType: mealType,
+               date: dateStr,
+               userId: _userId ?? 1, // Fallback to 1 if null, but should be set
+             ),
+           ),
+         );
+         
+         // Refresh home data when returning
+         _loadInitialData();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: hasFood ? color.withOpacity(0.2) : AppTheme.textSecondary.withOpacity(0.1), width: 2),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 5))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]), borderRadius: BorderRadius.circular(16)),
+              child: Icon(icon, color: Colors.white, size: 26),
             ),
-          ),
-          InkWell(
-            onTap: () {
-               // Open modal with pre-selected type
-               // We need to update _showAddMealModal signature first or handle it here
-               // For now, let's just assume we'll update it later
-              _showAddMealModal(initialType: mealType.toLowerCase());
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text(caloriesText, style: GoogleFonts.poppins(fontSize: 14, color: hasFood ? color : AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+            Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: hasFood ? AppTheme.successColor.withOpacity(0.1) : AppTheme.textSecondary.withOpacity(0.1),
@@ -553,8 +570,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 size: 24,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

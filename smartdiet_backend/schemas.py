@@ -50,6 +50,8 @@ class MealBase(BaseModel):
     carbs: float
     fat: float
     fiber: Optional[float] = 0
+    quantity: Optional[float] = 100
+    unit: Optional[str] = 'g'
     date: str
     time: Optional[str] = None
     notes: Optional[str] = None

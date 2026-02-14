@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
-import 'add_meal_form.dart'; // Pour réutiliser le formulaire si besoin, ou on passera les data
+import 'food_quantity_dialog.dart';
 
 class SearchFoodScreen extends StatefulWidget {
   const SearchFoodScreen({super.key});
@@ -18,19 +18,21 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // Load default foods
+    _performSearch('');
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _error = null;
-      });
-      return;
-    }
+    // Allow empty query to fetch default list
+    // if (query.trim().isEmpty) { ... }
 
     setState(() {
       _isLoading = true;
@@ -55,21 +57,16 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   }
 
   void _onFoodSelected(Map<String, dynamic> food) async {
-    // food: {name: '...', calories: ..., category: ...}
-    // On ouvre le formulaire AddMealForm pré-rempli
-    
-    // Note: Pour simplifier, on peut ouvrir le AddMealForm DEPUIS ici.
-    // Il faut que AddMealForm accepte des valeurs initiales.
-    
-    // On va modifier AddMealForm juste après pour accepter des initialValues.
-    // Pour l'instant, disons qu'on retourne le résultat à l'écran précédent qui gérera l'ouverture ?
-    // Ou mieux, on ouvre le modal ici directement, c'est plus fluide.
-    
-    // Mais AddMealForm a besoin du userId. On ne l'a pas ici facilement sauf si on le passe
-    // ou si on le récupère via getMe (déjà fait dans HomeScreen).
-    
-    // Pour faire simple : on retourne l'aliment sélectionné à HomeScreen
-    Navigator.pop(context, food);
+    // Show quantity dialog
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => FoodQuantityDialog(food: food),
+    );
+
+    if (result != null && mounted) {
+      // Return the result to the caller (MealDetailScreen)
+      Navigator.pop(context, result);
+    }
   }
 
   @override
@@ -106,10 +103,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
               ),
               textInputAction: TextInputAction.search,
               onSubmitted: _performSearch,
-              onChanged: (val) {
-                // Debounce simple possible ici, mais on va rester simple : search on submit
-                // ou search si > 3 chars
-              },
             ),
           ),
           if (_isLoading)
@@ -132,7 +125,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                 final item = _searchResults[index];
                 return ListTile(
                   title: Text(item['name'] ?? '', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-                  subtitle: Text('${item['calories']} kcal / 100g • ${item['category']}', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
+                  subtitle: Text('${(item['calories'] as num?)?.toInt()} kcal / 100g • ${item['category'] ?? ''}', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
                   trailing: const Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
                   onTap: () => _onFoodSelected(item),
                 );

@@ -62,8 +62,15 @@ def init_db():
                     user_id INTEGER REFERENCES users(id),
                     product_id INTEGER REFERENCES products(id),
                     meal_type VARCHAR(50), -- breakfast, lunch, dinner, snack
-                    date DATE DEFAULT CURRENT_DATE
-                );
+                    date DATE DEFAULT CURRENT_DATE,
+                    time TIME DEFAULT CURRENT_TIME, -- Ajout de l'heure
+                    name VARCHAR(100), -- Nom du repas/aliment (snapshot)
+                    calories FLOAT DEFAULT 0,
+                    protein FLOAT DEFAULT 0,
+                    carbs FLOAT DEFAULT 0,
+                    fat FLOAT DEFAULT 0,
+                    quantity FLOAT DEFAULT 100, -- Quantité en grammes ou portions
+                    unit VARCHAR(20) DEFAULT 'g' -- Unité de la quantité
             """)
 
             # Insertion d'un utilisateur par défaut s'il n'existe pas
@@ -78,10 +85,41 @@ def init_db():
             cur.close()
             conn.close()
             print("Base de données initialisée avec succès.")
+            
+            # Run schema updates for existing tables
+            update_schema()
+            
         except Exception as e:
             print(f"Erreur lors de l'initialisation de la DB: {e}")
     else:
          print("Impossible de se connecter pour initialiser la DB.")
+
+def update_schema():
+    conn = get_db_connection()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        # Add columns to meals if they don't exist
+        columns = [
+            ("time", "TIME DEFAULT CURRENT_TIME"),
+            ("name", "VARCHAR(100)"),
+            ("calories", "FLOAT DEFAULT 0"),
+            ("protein", "FLOAT DEFAULT 0"),
+            ("carbs", "FLOAT DEFAULT 0"),
+            ("fat", "FLOAT DEFAULT 0"),
+            ("quantity", "FLOAT DEFAULT 100"),
+            ("unit", "VARCHAR(20) DEFAULT 'g'")
+        ]
+        for col, definition in columns:
+            try:
+                cur.execute(f"ALTER TABLE meals ADD COLUMN {col} {definition};")
+                conn.commit()
+            except Exception:
+                conn.rollback() # Column likely exists
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Schema update error: {e}")
 
 if __name__ == "__main__":
     init_db()

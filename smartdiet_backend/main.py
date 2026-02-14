@@ -89,10 +89,10 @@ async def recognize_food(file: UploadFile = File(...)):
 
 
 @app.get("/api/foods/search")
-def search_foods(query: str, db: Session = Depends(get_db)):
+def search_foods(query: str = "", db: Session = Depends(get_db)):
     """Recherche dans la base de données"""
-    if not query:
-        return []
+    # if not query:
+    #     return []
         
     results = crud.get_foods(db, query)
     

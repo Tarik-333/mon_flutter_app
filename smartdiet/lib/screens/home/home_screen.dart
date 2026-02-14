@@ -792,12 +792,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (dateStr == today) return "Aujourd'hui";
       if (dateStr == yesterday) return "Hier";
       
+      // Parse YYYY-MM-DD to DD/MM/YYYY
+      final parts = dateStr.split('-');
+      if (parts.length == 3) {
+        return '${parts[2]}/${parts[1]}/${parts[0]}';
+      }
+      
       return dateStr;
     } catch (_) {
       return dateStr;
     }
-  }
-
   }
 
   Widget _buildProfilePage() {
@@ -930,7 +934,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       String title,
       String subtitle,
       IconData icon,
-      IconData icon,
       Color color, {
       String? initialType,
       }) {
@@ -1059,5 +1062,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (result == true) {
       await _fetchMeals();
     }
+  }
+  Future<void> _fetchMeals() async {
+    await _fetchTodayMeals();
+    await _fetchHistoryMeals();
   }
 }

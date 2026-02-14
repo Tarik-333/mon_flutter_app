@@ -212,6 +212,17 @@ class ApiService {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> getMealsByDate(String date) async {
+    final url = Uri.parse('$baseUrl/api/meals/date/$date');
+    final res = await http.get(url, headers: _headers(auth: true));
+
+    if (res.statusCode != 200) {
+      throw Exception('getMealsByDate failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   // -------------------------
   // WEIGHT LOGS
   // -------------------------
